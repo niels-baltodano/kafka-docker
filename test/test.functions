@@ -29,7 +29,11 @@ setupStartKafkaScript() {
 
 	# We need to remove all executable commands from the start-kafka.sh script, so it can be sourced to evaluate
 	# the environment variables
-	sed  -i -E -e '/^create-topics.sh/d' -e '/^exec "\$KAFKA_HOME\/bin\/kafka-server-start.sh"/d' "$START_KAFKA"
+	sed  -i -E \
+		-e '/^create-topics.sh/d' \
+		-e '/^[[:space:]]*"\$KAFKA_HOME\/bin\/kafka-storage.sh" format \\/,+3d' \
+		-e '/^exec "\$KAFKA_HOME\/bin\/kafka-server-start.sh"/d' \
+		"$START_KAFKA"
 
 	# Mock the call to docker port to return valid result
 	function docker() { echo "0.0.0.0:9092"; }

@@ -33,6 +33,12 @@ if [[ "$MAJOR_VERSION" == "0" && "$MINOR_VERSION" -gt "9" ]] || [[ "$MAJOR_VERSI
     KAFKA_0_10_OPTS="--if-not-exists"
 fi
 
+if [[ "${KAFKA_ENABLE_KRAFT:-false}" == "true" ]]; then
+    KAFKA_TOPIC_CONNECTION_ARG="--bootstrap-server ${KAFKA_CREATE_TOPICS_BOOTSTRAP_SERVER:-localhost:${KAFKA_PORT}}"
+else
+    KAFKA_TOPIC_CONNECTION_ARG="--zookeeper ${KAFKA_ZOOKEEPER_CONNECT}"
+fi
+
 # Expected format:
 #   name:partitions:replicas:cleanup.policy
 IFS="${KAFKA_CREATE_TOPICS_SEPARATOR-,}"; for topicToCreate in $KAFKA_CREATE_TOPICS; do
@@ -45,7 +51,7 @@ IFS="${KAFKA_CREATE_TOPICS_SEPARATOR-,}"; for topicToCreate in $KAFKA_CREATE_TOP
 
     COMMAND="JMX_PORT='' ${KAFKA_HOME}/bin/kafka-topics.sh \\
 		--create \\
-		--zookeeper ${KAFKA_ZOOKEEPER_CONNECT} \\
+		${KAFKA_TOPIC_CONNECTION_ARG} \\
 		--topic ${topicConfig[0]} \\
 		--partitions ${topicConfig[1]} \\
 		--replication-factor ${topicConfig[2]} \\

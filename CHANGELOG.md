@@ -3,6 +3,15 @@ Changelog
 
 Kafka features are not tied to a specific kafka-docker version (ideally all changes will be merged into all branches). Therefore, this changelog will track changes to the image by date.
 
+09-Apr-2026
+-----------
+
+-	Add KRaft mode support via `KAFKA_ENABLE_KRAFT=true` (no ZooKeeper required)
+-	Add automatic KRaft storage formatting on first startup
+-	Update topic auto-creation to support KRaft (`--bootstrap-server`)
+-	Update defaults to Kafka `3.7.1`, Scala `2.13`, and Java 17 base image
+-	Add `docker-compose-kraft.yml` example
+
 20-Dec-2019
 -----------
 

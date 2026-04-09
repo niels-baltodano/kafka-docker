@@ -1,7 +1,7 @@
-FROM openjdk:8u212-jre-alpine
+FROM eclipse-temurin:17-jre-alpine
 
-ARG kafka_version=2.4.0
-ARG scala_version=2.12
+ARG kafka_version=3.7.1
+ARG scala_version=2.13
 ARG glibc_version=2.30-r0
 ARG vcs_ref=unspecified
 ARG build_date=unspecified

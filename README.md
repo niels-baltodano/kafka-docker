@@ -14,8 +14,9 @@ The image is available directly from [Docker Hub](https://hub.docker.com/r/wurst
 Tags and releases
 -----------------
 
-All versions of the image are built from the same set of scripts with only minor variations (i.e. certain features are not supported on older versions). The version format mirrors the Kafka format, `<scala version>-<kafka version>`. Initially, all images are built with the recommended version of scala documented on [http://kafka.apache.org/downloads](http://kafka.apache.org/downloads). Available tags are:
+All versions of the image are built from the same set of scripts with only minor variations (i.e. certain features are not supported on older versions). The version format mirrors the Kafka format, `<scala version>-<kafka version>`. Initially, all images are built with the recommended version of scala documented on [http://kafka.apache.org/downloads](http://kafka.apache.org/downloads). Available tags include:
 
+- `2.13-3.7.1` (default)
 - `2.12-2.4.0`
 - `2.12-2.3.1`
 - `2.12-2.2.2`
@@ -34,14 +35,15 @@ Everytime the image is updated, all tags will be pushed with the latest updates.
 
 ## Announcements
 
-* **04-Jun-2019** - Update base image to openjdk 212 ([Release notes](https://www.oracle.com/technetwork/java/javase/8u212-relnotes-5292913.html). Please force pull to get these latest updates - including security patches etc.
+* **09-Apr-2026** - Added first-class **KRaft mode** support (`KAFKA_ENABLE_KRAFT=true`) and KRaft-compatible topic auto-creation.
+* **09-Apr-2026** - Updated default base image to Eclipse Temurin 17 and default Kafka/Scala to `3.7.1` / `2.13`.
 
 ---
 
 ## Pre-Requisites
 
 - install docker-compose [https://docs.docker.com/compose/install/](https://docs.docker.com/compose/install/)
-- modify the ```KAFKA_ADVERTISED_HOST_NAME``` in [docker-compose.yml](https://raw.githubusercontent.com/wurstmeister/kafka-docker/master/docker-compose.yml) to match your docker host IP (Note: Do not use localhost or 127.0.0.1 as the host ip if you want to run multiple brokers.)
+- for ZooKeeper mode, modify the ```KAFKA_ADVERTISED_HOST_NAME``` in [docker-compose.yml](https://raw.githubusercontent.com/wurstmeister/kafka-docker/master/docker-compose.yml) to match your docker host IP (Note: Do not use localhost or 127.0.0.1 as the host ip if you want to run multiple brokers.)
 - if you want to customize any Kafka parameters, simply add them as environment variables in ```docker-compose.yml```, e.g. in order to increase the ```message.max.bytes``` parameter set the environment to ```KAFKA_MESSAGE_MAX_BYTES: 2000000```. To turn off automatic topic creation set ```KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'```
 - Kafka's log4j usage can be customized by adding environment variables prefixed with ```LOG4J_```. These will be mapped to ```log4j.properties```. For example: ```LOG4J_LOGGER_KAFKA_AUTHORIZER_LOGGER=DEBUG, authorizerAppender```
 
@@ -52,6 +54,10 @@ Everytime the image is updated, all tags will be pushed with the latest updates.
 Start a cluster:
 
 - ```docker-compose up -d ```
+
+Start a single-node KRaft cluster (no ZooKeeper):
+
+- ```docker-compose -f docker-compose-kraft.yml up -d```
 
 Add more brokers:
 
@@ -66,6 +72,20 @@ Destroy a cluster:
 The default ```docker-compose.yml``` should be seen as a starting point. By default each broker will get a new port number and broker id on restart. Depending on your use case this might not be desirable. If you need to use specific ports and broker ids, modify the docker-compose configuration accordingly, e.g. [docker-compose-single-broker.yml](https://github.com/wurstmeister/kafka-docker/blob/master/docker-compose-single-broker.yml):
 
 - ```docker-compose -f docker-compose-single-broker.yml up```
+
+For KRaft-based local development, use [docker-compose-kraft.yml](https://github.com/wurstmeister/kafka-docker/blob/master/docker-compose-kraft.yml).
+
+## KRaft mode
+
+Set `KAFKA_ENABLE_KRAFT=true` to run the broker without ZooKeeper.
+
+When KRaft mode is enabled this image will:
+
+1. set sensible defaults for `process.roles`, `controller.listener.names`, `controller.quorum.voters`, and listeners,
+2. generate a `KAFKA_CLUSTER_ID` if one is not provided, and
+3. format the storage directory automatically on first startup.
+
+You can still override all KRaft settings with explicit `KAFKA_*` variables.
 
 ## Broker IDs
 

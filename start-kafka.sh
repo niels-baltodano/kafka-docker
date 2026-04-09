@@ -10,8 +10,11 @@ fi
 # Store original IFS config, so we can restore it at various stages
 ORIG_IFS=$IFS
 
-if [[ -z "$KAFKA_ZOOKEEPER_CONNECT" ]]; then
-    echo "ERROR: missing mandatory config: KAFKA_ZOOKEEPER_CONNECT"
+KAFKA_ENABLE_KRAFT=${KAFKA_ENABLE_KRAFT:-false}
+if [[ "$KAFKA_ENABLE_KRAFT" == "true" ]]; then
+    echo "KRaft mode enabled"
+elif [[ -z "$KAFKA_ZOOKEEPER_CONNECT" ]]; then
+    echo "ERROR: missing mandatory config: KAFKA_ZOOKEEPER_CONNECT (or set KAFKA_ENABLE_KRAFT=true)"
     exit 1
 fi
 
@@ -42,6 +45,48 @@ fi
 
 if [[ -z "$KAFKA_LOG_DIRS" ]]; then
     export KAFKA_LOG_DIRS="/kafka/kafka-logs-$HOSTNAME"
+fi
+
+if [[ "$KAFKA_ENABLE_KRAFT" == "true" ]]; then
+    if [[ "$KAFKA_BROKER_ID" == "-1" ]]; then
+        export KAFKA_BROKER_ID=1
+    fi
+
+    if [[ -z "$KAFKA_NODE_ID" ]]; then
+        export KAFKA_NODE_ID="${KAFKA_BROKER_ID}"
+    fi
+
+    if [[ -z "$KAFKA_PROCESS_ROLES" ]]; then
+        export KAFKA_PROCESS_ROLES="broker,controller"
+    fi
+
+    if [[ -z "$KAFKA_CONTROLLER_LISTENER_NAMES" ]]; then
+        export KAFKA_CONTROLLER_LISTENER_NAMES="CONTROLLER"
+    fi
+
+    if [[ -z "$KAFKA_LISTENER_SECURITY_PROTOCOL_MAP" ]]; then
+        export KAFKA_LISTENER_SECURITY_PROTOCOL_MAP="PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+    fi
+
+    if [[ -z "$KAFKA_INTER_BROKER_LISTENER_NAME" ]]; then
+        export KAFKA_INTER_BROKER_LISTENER_NAME="PLAINTEXT"
+    fi
+
+    if [[ -z "$KAFKA_LISTENERS" ]]; then
+        export KAFKA_LISTENERS="PLAINTEXT://:9092,CONTROLLER://:9093"
+    fi
+
+    if [[ -z "$KAFKA_ADVERTISED_LISTENERS" ]]; then
+        export KAFKA_ADVERTISED_LISTENERS="PLAINTEXT://${HOSTNAME}:${KAFKA_PORT}"
+    fi
+
+    if [[ -z "$KAFKA_CONTROLLER_QUORUM_VOTERS" ]]; then
+        export KAFKA_CONTROLLER_QUORUM_VOTERS="${KAFKA_NODE_ID}@${HOSTNAME}:9093"
+    fi
+
+    if [[ -z "$KAFKA_CLUSTER_ID" ]]; then
+        export KAFKA_CLUSTER_ID="$("$KAFKA_HOME/bin/kafka-storage.sh" random-uuid)"
+    fi
 fi
 
 if [[ -n "$KAFKA_HEAP_OPTS" ]]; then
@@ -144,6 +189,18 @@ echo "" >> "$KAFKA_HOME/config/server.properties"
 
 if [[ -n "$CUSTOM_INIT_SCRIPT" ]] ; then
   eval "$CUSTOM_INIT_SCRIPT"
+fi
+
+if [[ "$KAFKA_ENABLE_KRAFT" == "true" ]]; then
+    IFS=',' read -r -a LOG_DIR_ARRAY <<< "$KAFKA_LOG_DIRS"
+    FIRST_LOG_DIR="${LOG_DIR_ARRAY[0]}"
+    if [[ ! -f "${FIRST_LOG_DIR}/meta.properties" ]]; then
+        echo "Formatting storage directory for KRaft mode (${FIRST_LOG_DIR})"
+        "$KAFKA_HOME/bin/kafka-storage.sh" format \
+            --ignore-formatted \
+            --cluster-id "$KAFKA_CLUSTER_ID" \
+            --config "$KAFKA_HOME/config/server.properties"
+    fi
 fi
 
 exec "$KAFKA_HOME/bin/kafka-server-start.sh" "$KAFKA_HOME/config/server.properties"
